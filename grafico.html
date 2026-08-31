@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Teste Gráfico Dinâmico - ARA Têxtil</title>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: "Segoe UI", Arial, sans-serif;
+            background: #f5f7fa;
+            padding: 30px;
+            color: #1a1a1a;
+        }
+
+        .card {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 1200px;
+            margin: auto;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        h1 {
+            color: #003B7A;
+            font-size: 1.5rem;
+        }
+
+        button {
+            background: #003B7A;
+            color: #ffffff;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #00579b;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+
+        .grafico-container {
+            position: relative;
+            width: 100%;
+            min-height: 420px;
+        }
+
+        .status {
+            font-size: 0.8rem;
+            color: #666666;
+            margin-top: 12px;
+            text-align: right;
+            min-height: 20px;
+        }
+
+        .status.erro {
+            color: #a15c00;
+        }
+
+        .status.sucesso {
+            color: #267326;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 12px;
+            }
+
+            .card {
+                padding: 18px;
+            }
+
+            .header {
+                align-items: flex-start;
+            }
+
+            .grafico-container {
+                min-height: 320px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="card">
+
+        <div class="header">
+            <h1>Volume Diário</h1>
+
+            <button
+                id="btnAtualizar"
+                type="button"
+                onclick="carregarGrafico()"
+            >
+                🔄 Atualizar Dados
+            </button>
+        </div>
+
+        <div class="grafico-container">
+            <canvas id="grafico"></canvas>
+        </div>
+
+        <div
+            class="status"
+            id="status"
+            aria-live="polite"
+        >
+            Carregando dados...
+        </div>
+
+    </div>
+
+    <script>
+        let chart = null;
+
+        async function carregarGrafico() {
+
+            const status = document.getElementById("status");
+            const botao = document.getElementById("btnAtualizar");
+
+            try {
+
+                botao.disabled = true;
+
+                status.className = "status";
+                status.textContent = "Carregando dados...";
+
+                /*
+                    Cache-busting:
+                    adiciona um parâmetro diferente a cada requisição
+                    para solicitar a versão mais recente do dados.json.
+                */
+
+                const resposta = await fetch(
+                    "dados.json?v=" + Date.now(),
+                    {
+                        cache: "no-store"
+                    }
+                );
+
+                if (!resposta.ok) {
+                    throw new Error(
+                        "Erro HTTP ao carregar dados.json: " +
+                        resposta.status
+                    );
+                }
+
+                const dados = await resposta.json();
+
+                /*
+                    Validação do JSON
+                */
+
+                if (!Array.isArray(dados)) {
+                    throw new Error(
+                        "O conteúdo de dados.json não é uma matriz JSON."
+                    );
+                }
+
+                if (dados.length === 0) {
+                    throw new Error(
+                        "dados.json não possui registros."
+                    );
+                }
+
+                /*
+                    Converte os dados recebidos para o formato
+                    usado pelo gráfico.
+                */
+
+                const labels = dados.map(function (item) {
+                    return item.dia;
+                });
+
+                const valores = dados.map(function (item) {
+
+                    const numero = Number(item.volume);
+
+                    return Number.isFinite(numero)
+                        ? numero
+                        : 0;
+                });
+
+                /*
+                    Atualiza gráfico existente
+                */
+
+                if (chart) {
+
+                    chart.data.labels = labels;
+                    chart.data.datasets[0].data = valores;
+
+                    chart.update();
+
+                } else {
+
+                    /*
+                        Cria gráfico na primeira execução
+                    */
+
+                    const contexto =
+                        document.getElementById("grafico");
+
+                    chart = new Chart(
+                        contexto,
+                        {
+                            type: "line",
+
+                            data: {
+
+                                labels: labels,
+
+                                datasets: [
+                                    {
+                                        label: "Volume",
+
+                                        data: valores,
+
+                                        borderColor: "#003B7A",
+
+                                        backgroundColor:
+                                            "rgba(0, 59, 122, 0.15)",
+
+                                        borderWidth: 3,
+
+                                        fill: true,
+
+                                        tension: 0.3,
+
+                                        pointRadius: 5,
+
+                                        pointHoverRadius: 7,
+
+                                        pointBackgroundColor:
+                                            "#003B7A",
+
+                                        pointBorderColor:
+                                            "#ffffff",
+
+                                        pointBorderWidth: 2
+                                    }
+                                ]
+                            },
+
+                            options: {
+
+                                responsive: true,
+
+                                maintainAspectRatio: false,
+
+                                interaction: {
+                                    mode: "index",
+                                    intersect: false
+                                },
+
+                                plugins: {
+
+                                    legend: {
+                                        display: true
+                                    },
+
+                                    tooltip: {
+                                        enabled: true
+                                    }
+                                },
+
+                                scales: {
+
+                                    x: {
+                                        grid: {
+                                            display: false
+                                        }
+                                    },
+
+                                    y: {
+                                        beginAtZero: true
+                                    }
+                                }
+                            }
+                        }
+                    );
+                }
+
+                status.className = "status sucesso";
+
+                status.textContent =
+                    "✅ Dados atualizados em: " +
+                    new Date().toLocaleString("pt-BR");
+
+            } catch (erro) {
+
+                console.error(
+                    "Erro ao carregar dados.json:",
+                    erro
+                );
+
+                status.className = "status erro";
+
+                /*
+                    Essa mensagem diferencia o problema
+                    de abertura local do arquivo de outros erros.
+                */
+
+                if (window.location.protocol === "file:") {
+
+                    status.textContent =
+                        "⚠️ O gráfico foi aberto diretamente como arquivo local. " +
+                        "O navegador pode bloquear a leitura de dados.json.";
+
+                } else {
+
+                    status.textContent =
+                        "⚠️ Não foi possível carregar dados.json: " +
+                        erro.message;
+                }
+
+            } finally {
+
+                botao.disabled = false;
+            }
+        }
+
+        /*
+            Carrega os dados ao abrir a página.
+        */
+
+        carregarGrafico();
+
+        /*
+            Consulta novamente dados.json
+            automaticamente a cada 30 segundos.
+        */
+
+        setInterval(
+            carregarGrafico,
+            30000
+        );
+    </script>
+
+</body>
+
+</html>
