@@ -1,8 +1,0 @@
-Coloque nesta pasta o arquivo de áudio com este nome EXATO:
-
-audio-fim-treino.mp3
-
-Estrutura final:
-assets/audio-fim-treino.mp3
-
-O TrackFit v17 tentará usar esse MP3 para o gongo. Se o arquivo faltar ou a reprodução for bloqueada, o app utiliza o gongo sintético como fallback quando o navegador permitir.
